@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaflet.js and Flask A* Visualization</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #2e2e2e; /* Midnight black */
+            color: #fff;
+        }
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+        #sidebar {
+            width: 250px;
+            padding: 20px;
+            background-color: #1e1e1e;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+        }
+        #map {
+            flex-grow: 1;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4CAF50; /* Green */
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        h3 {
+            color: #ddd;
+        }
+        #stats {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #333;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="sidebar">
+            <h3>Map Controls</h3>
+            <input type="text" id="city-input" placeholder="Enter city name">
+            <button id="set-city">Set City</button>
+            <button id="reset-map">Reset Map</button>
+            <button id="find-path">Find Path</button>
+            <div id="stats">
+                <h4>Statistics</h4>
+                <p id="astar-time">A* Time: N/A</p>
+                <p id="dijkstra-time">Dijkstra Time: N/A</p>
+            </div>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        var map = L.map('map').setView([40.7831, -73.9712], 13); // Default center on Manhattan, New York
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        var startMarker, endMarker, pathLine;
+
+        map.on('click', function(e) {
+            if (!startMarker) {
+                startMarker = L.marker(e.latlng).addTo(map).bindPopup("Start").openPopup();
+            } else if (!endMarker) {
+                endMarker = L.marker(e.latlng).addTo(map).bindPopup("End").openPopup();
+            }
+        });
+
+        document.getElementById('set-city').addEventListener('click', function() {
+            var city = document.getElementById('city-input').value;
+            if (city) {
+                $.ajax({
+                    url: '/set_city',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ city: city }),
+                    success: function(response) {
+                        var bounds = response.bounds;
+                        var southWest = L.latLng(bounds.southWest[0], bounds.southWest[1]);
+                        var northEast = L.latLng(bounds.northEast[0], bounds.northEast[1]);
+                        var cityBounds = L.latLngBounds(southWest, northEast);
+
+                        map.fitBounds(cityBounds);
+                        clearMap();
+                    }
+                });
+            } else {
+                alert('Please enter a city name.');
+            }
+        });
+
+        document.getElementById('reset-map').addEventListener('click', function() {
+            clearMap();
+        });
+
+        document.getElementById('find-path').addEventListener('click', function() {
+            if (startMarker && endMarker) {
+                var startLatLng = startMarker.getLatLng();
+                var endLatLng = endMarker.getLatLng();
+
+                $.ajax({
+                    url: '/get_path',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        start: [startLatLng.lat, startLatLng.lng],
+                        end: [endLatLng.lat, endLatLng.lng]
+                    }),
+                    success: function(response) {
+                        var astarPathCoords = response.astar_path.map(function(coord) {
+                            return [coord[0], coord[1]];
+                        });
+
+                        var dijkstraPathCoords = response.dijkstra_path.map(function(coord) {
+                            return [coord[0], coord[1]];
+                        });
+
+                        if (pathLine) {
+                            map.removeLayer(pathLine);
+                        }
+
+                        pathLine = L.polyline(astarPathCoords, {color: 'red'}).addTo(map);
+                        L.polyline(dijkstraPathCoords, {color: 'blue'}).addTo(map);
+
+                        // Update the statistics
+                        document.getElementById('astar-time').innerText = "A* Time: " + response.astar_time.toFixed(2) + " ms";
+                        document.getElementById('dijkstra-time').innerText = "Dijkstra Time: " + response.dijkstra_time.toFixed(2) + " ms";
+                    }
+                });
+            } else {
+                alert('Please select both start and end points.');
+            }
+        });
+
+        function clearMap() {
+            if (startMarker) {
+                map.removeLayer(startMarker);
+                startMarker = null;
+            }
+            if (endMarker) {
+                map.removeLayer(endMarker);
+                endMarker = null;
+            }
+            if (pathLine) {
+                map.removeLayer(pathLine);
+                pathLine = null;
+            }
+            document.getElementById('astar-time').innerText = "A* Time: N/A";
+            document.getElementById('dijkstra-time').innerText = "Dijkstra Time: N/A";
+        }
+    </script>
+</body>
+</html>
