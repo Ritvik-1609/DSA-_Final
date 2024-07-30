@@ -11,11 +11,45 @@ app = Flask(__name__)
 current_graph = None
 
 def haversine_distance(node1, node2, G):
+    """
+    Calculate the Haversine distance between two nodes in a graph.
+
+    Parameters
+    ----------
+    node1 : int
+        The identifier for the first node.
+    node2 : int
+        The identifier for the second node.
+    G : networkx.Graph
+        The graph containing the nodes.
+
+    Returns
+    -------
+    float
+        The Haversine distance between the two nodes in meters.
+    """
     coord1 = (G.nodes[node1]['y'], G.nodes[node1]['x'])
     coord2 = (G.nodes[node2]['y'], G.nodes[node2]['x'])
     return great_circle(coord1, coord2).meters
 
 def astar_greedy(G, start, goal):
+    """
+    Perform the A* Greedy algorithm to find the shortest path in a graph.
+
+    Parameters
+    ----------
+    G : networkx.Graph
+        The graph in which to find the path.
+    start : int
+        The identifier for the start node.
+    goal : int
+        The identifier for the goal node.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the list of node identifiers for the shortest path and the time taken in milliseconds.
+    """
     open_set = []
     heapq.heappush(open_set, (0, start))
     came_from = {}
@@ -53,6 +87,23 @@ def astar_greedy(G, start, goal):
     return [], time_taken
 
 def dijkstra(G, start, goal):
+    """
+    Perform Dijkstra's algorithm to find the shortest path in a graph.
+
+    Parameters
+    ----------
+    G : networkx.Graph
+        The graph in which to find the path.
+    start : int
+        The identifier for the start node.
+    goal : int
+        The identifier for the goal node.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the list of node identifiers for the shortest path and the time taken in milliseconds.
+    """
     queue = [(0, start)]
     distances = {node: float('inf') for node in G.nodes}
     distances[start] = 0
@@ -89,10 +140,26 @@ def dijkstra(G, start, goal):
 
 @app.route('/')
 def index():
+    """
+    Render the index page.
+
+    Returns
+    -------
+    str
+        The rendered HTML content of the index page.
+    """
     return render_template('index.html')
 
 @app.route('/set_city', methods=['POST'])
 def set_city():
+    """
+    Set the current city and load its graph.
+
+    Returns
+    -------
+    flask.Response
+        A JSON response containing the bounding box of the city.
+    """
     global current_graph
     data = request.json
     city_name = data['city']
@@ -111,6 +178,14 @@ def set_city():
 
 @app.route('/get_path', methods=['POST'])
 def get_path():
+    """
+    Get the shortest path between two points using both A* and Dijkstra's algorithms.
+
+    Returns
+    -------
+    flask.Response
+        A JSON response containing the paths and times taken by both algorithms.
+    """
     global current_graph
     if current_graph is None:
         return jsonify({'error': 'No city selected'}), 400
