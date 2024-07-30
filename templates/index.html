@@ -79,7 +79,8 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        var startMarker, endMarker, pathLine;
+        var startMarker, endMarker;
+        var pathLines = [];
 
         map.on('click', function(e) {
             if (!startMarker) {
@@ -138,12 +139,15 @@
                             return [coord[0], coord[1]];
                         });
 
-                        if (pathLine) {
-                            map.removeLayer(pathLine);
-                        }
+                        pathLines.forEach(function(line) {
+                            map.removeLayer(line);
+                        });
+                        pathLines = [];
 
-                        pathLine = L.polyline(astarPathCoords, {color: 'red'}).addTo(map);
-                        L.polyline(dijkstraPathCoords, {color: 'blue'}).addTo(map);
+                        var astarLine = L.polyline(astarPathCoords, {color: 'red'}).addTo(map);
+                        var dijkstraLine = L.polyline(dijkstraPathCoords, {color: 'blue'}).addTo(map);
+
+                        pathLines.push(astarLine, dijkstraLine);
 
                         // Update the statistics
                         document.getElementById('astar-time').innerText = "A* Time: " + response.astar_time.toFixed(2) + " ms";
@@ -164,10 +168,10 @@
                 map.removeLayer(endMarker);
                 endMarker = null;
             }
-            if (pathLine) {
-                map.removeLayer(pathLine);
-                pathLine = null;
-            }
+            pathLines.forEach(function(line) {
+                map.removeLayer(line);
+            });
+            pathLines = [];
             document.getElementById('astar-time').innerText = "A* Time: N/A";
             document.getElementById('dijkstra-time').innerText = "Dijkstra Time: N/A";
         }
