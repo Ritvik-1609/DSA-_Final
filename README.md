@@ -9,3 +9,6 @@ Activate virtual environment: myenv/Scripts/Activate
 Install Requirements: pip install -r requirements.txt
 
 Run App: flask run --host="0.0.0.0"
+
+Currently for the set city please use: "Manhattan, New York, USA"
+I am working on making this available for more cities. 
